@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ITW Trip Database</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Custom styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- LOADING OVERLAY -->
+  <div id="loading-overlay">
+    <div class="spinner"></div>
+    <p>Loading trip data…</p>
+  </div>
+
+  <!-- ERROR BANNER -->
+  <div id="error-banner" class="hidden">
+    <span id="error-text">Could not load trip data. Retrying in 5 minutes.</span>
+    <button id="error-close" aria-label="Close">×</button>
+  </div>
+
+  <!-- HEADER -->
+  <header id="app-header">
+    <div class="header-left">
+      <span class="header-logo">🏔️</span>
+      <span class="header-title">ITW Trip Database</span>
+    </div>
+
+    <div class="header-center">
+      <div class="search-wrapper">
+        <svg class="search-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="8.5" cy="8.5" r="5.5"/><line x1="13" y1="13" x2="18" y2="18"/>
+        </svg>
+        <input
+          type="text"
+          id="search-input"
+          placeholder="Search trips, locations, leaders…"
+          autocomplete="off"
+        />
+        <button id="search-clear" class="hidden" aria-label="Clear search">×</button>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="view-toggle" role="tablist">
+        <button id="btn-map-view" class="view-btn active" role="tab" aria-selected="true">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M2 5l6-3 4 2 6-3v13l-6 3-4-2-6 3V5z"/></svg>
+          Map
+        </button>
+        <button id="btn-table-view" class="view-btn" role="tab" aria-selected="false">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M3 4h14v2H3V4zm0 5h14v2H3V9zm0 5h14v2H3v-2z"/></svg>
+          Table
+        </button>
+      </div>
+      <div class="header-meta">
+        <span id="trip-count"></span>
+        <span id="last-updated"></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main id="app-main">
+
+    <!-- ─── MAP VIEW ─── -->
+    <div id="map-view" class="view-panel active">
+      <div id="map"></div>
+
+      <!-- Trip detail panel (slides in from right on desktop, up on mobile) -->
+      <div id="trip-panel" class="trip-panel hidden" role="complementary" aria-label="Trip details">
+        <button id="trip-panel-close" class="panel-close" aria-label="Close panel">×</button>
+        <div id="trip-panel-content"></div>
+      </div>
+    </div>
+
+    <!-- ─── TABLE VIEW ─── -->
+    <div id="table-view" class="view-panel hidden">
+
+      <div class="filter-bar">
+        <div class="filter-chips" role="group" aria-label="Filter by skill level">
+          <button class="chip active" data-level="all">All</button>
+          <button class="chip beginner" data-level="beginner">Beginner</button>
+          <button class="chip intermediate" data-level="intermediate">Intermediate</button>
+          <button class="chip advanced" data-level="advanced">Advanced</button>
+        </div>
+
+        <!-- Active column filter pills -->
+        <div id="column-filter-pills" class="column-filter-pills hidden" aria-label="Active filters"></div>
+
+        <div class="filter-bar-right">
+          <!-- Add Filter -->
+          <div class="col-filter" id="col-filter">
+            <button id="col-filter-btn" class="col-chooser-btn" aria-haspopup="true" aria-expanded="false">
+              <svg viewBox="0 0 16 16" fill="currentColor" width="13" height="13"><path d="M8 2a1 1 0 0 1 1 1v4h4a1 1 0 0 1 0 2h-4v4a1 1 0 0 1-2 0V9H3a1 1 0 0 1 0-2h4V3a1 1 0 0 1 1-1z"/></svg>
+              Filter
+            </button>
+            <div id="col-filter-dropdown" class="col-filter-dropdown hidden" role="dialog" aria-label="Add column filter">
+              <div class="col-filter-form">
+                <select id="col-filter-select" aria-label="Column to filter">
+                  <option value="">Select column…</option>
+                </select>
+                <input type="text" id="col-filter-input" placeholder="Enter filter value…" autocomplete="off" />
+                <button id="col-filter-add-btn">Add Filter</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column chooser -->
+          <div class="col-chooser" id="col-chooser">
+            <button id="col-chooser-btn" class="col-chooser-btn" aria-haspopup="true" aria-expanded="false">
+              <svg viewBox="0 0 16 16" fill="currentColor" width="13" height="13"><path d="M1 3h14v1.5H1V3zm2 4h10v1.5H3V7zm2 4h6v1.5H5V11z"/></svg>
+              Columns
+            </button>
+            <div id="col-chooser-dropdown" class="col-chooser-dropdown hidden" role="menu">
+              <!-- populated by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Split: table left, detail panel right -->
+      <div id="table-split" class="table-split">
+        <div class="table-wrapper">
+          <table id="trips-table">
+            <thead><tr id="trips-thead-row"></tr></thead>
+            <tbody id="trips-tbody"></tbody>
+          </table>
+          <div id="no-results" class="hidden">No trips match your search.</div>
+        </div>
+
+        <!-- Right-side detail panel -->
+        <div id="table-detail-panel" class="table-detail-panel hidden">
+          <button id="table-panel-close" class="panel-close" aria-label="Close">×</button>
+          <div id="table-panel-content"></div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer id="app-footer">
+    <span>Santa Clara University — Into The Wild</span>
+    <span id="footer-status"></span>
+  </footer>
+
+  <!-- SCRIPTS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
