@@ -56,6 +56,7 @@
           <svg viewBox="0 0 20 20" fill="currentColor"><path d="M3 4h14v2H3V4zm0 5h14v2H3V9zm0 5h14v2H3v-2z"/></svg>
           Table
         </button>
+        <button id="admin-btn" class="view-btn admin-btn" aria-label="Admin login">Log into Admin</button>
       </div>
       <div class="header-meta">
         <span id="trip-count"></span>
@@ -149,6 +150,24 @@
     <span>Santa Clara University — Into The Wild</span>
     <span id="footer-status"></span>
   </footer>
+
+  <!-- ADMIN MODAL -->
+  <div id="admin-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Admin login">
+    <div class="modal-box">
+      <button id="admin-modal-close" class="modal-close" aria-label="Close">×</button>
+      <h2 class="modal-title">Admin Login</h2>
+      <p class="modal-subtitle">ITW leaders only</p>
+      <input
+        type="password"
+        id="admin-password-input"
+        class="modal-password-input"
+        placeholder="Password"
+        autocomplete="current-password"
+      />
+      <p id="admin-error" class="modal-error hidden">Incorrect password</p>
+      <button id="admin-login-btn" class="modal-submit">Log In</button>
+    </div>
+  </div>
 
   <!-- SCRIPTS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

@@ -7,6 +7,7 @@ const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRqhaP4vPUwoFzv
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const GEO_CACHE_KEY    = 'itw_geocache_v4';
 const GEO_DELAY_MS     = 1100; // Nominatim: max 1 req/sec
+const ADMIN_PASSWORD   = 'itwadmin'; // Change before deploying
 
 /* Column name mappings — update here if the sheet changes */
 const COL = {
@@ -29,6 +30,7 @@ const COL = {
   blurb:        'School-wide Email Blurb',
   rangerStation:'Address and phone number of closest ranger station',
   hospital:     'Address and phone number of closest hospital',
+  planningDoc:  'Planning Doc',
 };
 
 /* ── TABLE COLUMN DEFINITIONS ── */
@@ -52,9 +54,11 @@ const TABLE_COLUMNS = [
   { key: 'blurb',        label: 'Email Blurb',     isDate: false, default: false },
   { key: 'rangerStation',label: 'Ranger Station',  isDate: false, default: false },
   { key: 'hospital',     label: 'Hospital',        isDate: false, default: false },
+  { key: 'planningDoc',  label: 'Planning Doc',    isDate: false, default: false, adminOnly: true },
 ];
 
 /* ── STATE ── */
+let isAdmin         = (sessionStorage.getItem('itw_admin') === '1');
 let allTrips        = [];
 let filteredTrips   = [];
 let map             = null;
@@ -221,6 +225,9 @@ function tripPanelHTML(trip) {
       ${travelUrl ? `<a class="panel-map-btn" href="${travelUrl}" target="_blank" rel="noopener">
         🗺️ Open in Google Maps
       </a>` : ''}
+      ${(isAdmin && trip[COL.planningDoc]) ? `<a class="planning-doc-btn" href="${escAttr(trip[COL.planningDoc])}" target="_blank" rel="noopener">
+        📋 Planning Doc
+      </a>` : ''}
     </div>
   `;
 }
@@ -273,6 +280,12 @@ function renderTableHeader() {
 function getCellHTML(trip, key) {
   const val = trip[COL[key]] || '';
   if (key === 'trip') return `<span title="${escAttr(val)}">${escHtml(val || '—')}</span>`;
+  if (key === 'planningDoc') {
+    if (!isAdmin) return `<span class="td-muted">—</span>`;
+    return val
+      ? `<a href="${escAttr(val)}" target="_blank" rel="noopener" class="td-doc-link">📋 Doc</a>`
+      : `<span class="td-muted">—</span>`;
+  }
   return `<span class="td-muted" title="${escAttr(val)}">${escHtml(val || '—')}</span>`;
 }
 
@@ -365,7 +378,8 @@ function renderColumnFilterPills() {
 /* ── Column chooser ── */
 function renderColChooser() {
   const dropdown = document.getElementById('col-chooser-dropdown');
-  dropdown.innerHTML = TABLE_COLUMNS.map(col => `
+  const visibleCols = TABLE_COLUMNS.filter(col => !col.adminOnly || isAdmin);
+  dropdown.innerHTML = visibleCols.map(col => `
     <label>
       <input type="checkbox" data-key="${col.key}" ${activeColumnKeys.includes(col.key) ? 'checked' : ''}>
       ${col.label}
@@ -714,13 +728,17 @@ function bindUI() {
   const colFilterInput    = document.getElementById('col-filter-input');
   const colFilterAddBtn   = document.getElementById('col-filter-add-btn');
 
-  // Populate column select
-  TABLE_COLUMNS.forEach(col => {
-    const opt = document.createElement('option');
-    opt.value = col.key;
-    opt.textContent = col.label;
-    colFilterSelect.appendChild(opt);
-  });
+  // Populate column select (skip admin-only columns when not logged in)
+  function populateColFilterSelect() {
+    colFilterSelect.innerHTML = '<option value="">Select column…</option>';
+    TABLE_COLUMNS.filter(col => !col.adminOnly || isAdmin).forEach(col => {
+      const opt = document.createElement('option');
+      opt.value = col.key;
+      opt.textContent = col.label;
+      colFilterSelect.appendChild(opt);
+    });
+  }
+  populateColFilterSelect();
 
   colFilterBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -777,6 +795,86 @@ function bindUI() {
 
   // Error banner close
   document.getElementById('error-close').addEventListener('click', hideError);
+
+  // ── Admin login ──
+  const adminBtn           = document.getElementById('admin-btn');
+  const adminModal         = document.getElementById('admin-modal');
+  const adminModalClose    = document.getElementById('admin-modal-close');
+  const adminPasswordInput = document.getElementById('admin-password-input');
+  const adminError         = document.getElementById('admin-error');
+  const adminLoginBtn      = document.getElementById('admin-login-btn');
+
+  function updateAdminUI() {
+    if (isAdmin) {
+      adminBtn.classList.add('is-admin');
+      adminBtn.textContent = 'Log out of Admin';
+    } else {
+      adminBtn.classList.remove('is-admin');
+      adminBtn.textContent = 'Log into Admin';
+    }
+    renderColChooser();
+    populateColFilterSelect();
+    if (filteredTrips.length > 0) renderTable(filteredTrips);
+    // Re-render any open detail panel
+    if (selectedTripId) {
+      const trip = allTrips.find(t => t._id === selectedTripId);
+      if (trip) {
+        const mapContent   = document.getElementById('trip-panel-content');
+        const tableContent = document.getElementById('table-panel-content');
+        if (mapContent)   mapContent.innerHTML   = tripPanelHTML(trip);
+        if (tableContent) tableContent.innerHTML = tripPanelHTML(trip);
+      }
+    }
+  }
+
+  // Restore admin button state if session was saved
+  updateAdminUI();
+
+  adminBtn.addEventListener('click', () => {
+    if (isAdmin) {
+      // Log out immediately
+      isAdmin = false;
+      sessionStorage.removeItem('itw_admin');
+      activeColumnKeys = activeColumnKeys.filter(k => k !== 'planningDoc');
+      updateAdminUI();
+    } else {
+      // Show login modal
+      adminModal.classList.remove('hidden');
+      adminPasswordInput.value = '';
+      adminError.classList.add('hidden');
+      setTimeout(() => adminPasswordInput.focus(), 50);
+    }
+  });
+
+  adminModalClose.addEventListener('click', () => adminModal.classList.add('hidden'));
+
+  // Close modal by clicking the backdrop
+  adminModal.addEventListener('click', (e) => {
+    if (e.target === adminModal) adminModal.classList.add('hidden');
+  });
+
+  function attemptAdminLogin() {
+    if (adminPasswordInput.value === ADMIN_PASSWORD) {
+      isAdmin = true;
+      sessionStorage.setItem('itw_admin', '1');
+      // Auto-add Planning Doc column in TABLE_COLUMNS order
+      if (!activeColumnKeys.includes('planningDoc')) {
+        const order = TABLE_COLUMNS.map(c => c.key);
+        activeColumnKeys = order.filter(k => activeColumnKeys.includes(k) || k === 'planningDoc');
+      }
+      adminModal.classList.add('hidden');
+      updateAdminUI();
+    } else {
+      adminError.classList.remove('hidden');
+      adminPasswordInput.select();
+    }
+  }
+
+  adminLoginBtn.addEventListener('click', attemptAdminLogin);
+  adminPasswordInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  attemptAdminLogin();
+    if (e.key === 'Escape') adminModal.classList.add('hidden');
+  });
 }
 
 /* ── Auto-refresh ── */

@@ -515,3 +515,95 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 
   #trips-table td, #trips-table th { padding: 9px 10px; }
 }
+
+/* ════════════════════════════════════════
+   ADMIN LOGIN
+   ════════════════════════════════════════ */
+
+/* ── Admin button in header (extends .view-btn) ── */
+.admin-btn.is-admin {
+  background: rgba(34, 197, 94, 0.25);
+  color: #86efac;
+}
+.admin-btn.is-admin:hover {
+  background: rgba(34, 197, 94, 0.4);
+  color: white;
+}
+
+/* ── Planning Doc button (in trip panel) ── */
+.planning-doc-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; margin-top: 8px;
+  background: #22c55e; color: white;
+  border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
+  transition: background 0.15s; text-decoration: none;
+}
+.planning-doc-btn:hover { background: #16a34a; }
+
+/* ── Planning Doc table cell link ── */
+.td-doc-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 600;
+  color: var(--accent); text-decoration: none;
+  padding: 2px 6px; border-radius: var(--radius-sm);
+  border: 1px solid var(--accent); transition: all 0.12s;
+}
+.td-doc-link:hover { background: var(--accent); color: white; }
+
+/* ── Admin modal ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.15s ease;
+}
+
+.modal-box {
+  position: relative;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 28px 24px 24px;
+  width: 100%; max-width: 320px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+.modal-close {
+  position: absolute; top: 10px; right: 12px;
+  background: none; border: none; cursor: pointer;
+  font-size: 20px; line-height: 1; color: var(--text-muted);
+  padding: 2px 6px; border-radius: var(--radius-sm);
+  transition: background 0.12s, color 0.12s;
+}
+.modal-close:hover { background: var(--border); color: var(--text); }
+
+.modal-title {
+  font-size: 17px; font-weight: 700; color: var(--text);
+}
+.modal-subtitle {
+  font-size: 13px; color: var(--text-muted); margin-top: -6px;
+}
+
+.modal-password-input {
+  width: 100%; padding: 9px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 14px; color: var(--text); background: var(--surface);
+  transition: border-color 0.15s;
+  outline: none;
+}
+.modal-password-input:focus { border-color: var(--accent); }
+
+.modal-error {
+  font-size: 12px; color: #ef4444; font-weight: 500;
+  margin-top: -4px;
+}
+
+.modal-submit {
+  width: 100%; padding: 10px;
+  background: var(--accent); color: white;
+  border: none; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: background 0.15s;
+}
+.modal-submit:hover { background: var(--accent-hover); }
