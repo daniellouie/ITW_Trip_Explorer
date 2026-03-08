@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ITW Trip Database</title>
+  <title>ITW Trip Explorer</title>
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -27,8 +27,7 @@
   <!-- HEADER -->
   <header id="app-header">
     <div class="header-left">
-      <span class="header-logo">🏔️</span>
-      <span class="header-title">ITW Trip Database</span>
+      <span class="header-title">ITW Trip Explorer</span>
     </div>
 
     <div class="header-center">
@@ -83,13 +82,6 @@
     <div id="table-view" class="view-panel hidden">
 
       <div class="filter-bar">
-        <div class="filter-chips" role="group" aria-label="Filter by skill level">
-          <button class="chip active" data-level="all">All</button>
-          <button class="chip beginner" data-level="beginner">Beginner</button>
-          <button class="chip intermediate" data-level="intermediate">Intermediate</button>
-          <button class="chip advanced" data-level="advanced">Advanced</button>
-        </div>
-
         <!-- Active column filter pills -->
         <div id="column-filter-pills" class="column-filter-pills hidden" aria-label="Active filters"></div>
 
@@ -147,7 +139,6 @@
 
   <!-- FOOTER -->
   <footer id="app-footer">
-    <span>Santa Clara University — Into The Wild</span>
     <span id="footer-status"></span>
   </footer>
 

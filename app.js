@@ -5,8 +5,6 @@
 /* ── CONFIG ── */
 const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRqhaP4vPUwoFzvmx6-vxPbgOxWqXpwKodb4TQsN52q4Ih2Ca_G9Pp9Cetua_OOyvBf_azibL_IlfE0/pub?gid=64204779&single=true&output=csv';
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
-const GEO_CACHE_KEY    = 'itw_geocache_v4';
-const GEO_DELAY_MS     = 1100; // Nominatim: max 1 req/sec
 const ADMIN_PASSWORD   = 'itwadmin'; // Change before deploying
 
 /* Column name mappings — update here if the sheet changes */
@@ -31,6 +29,8 @@ const COL = {
   rangerStation:'Address and phone number of closest ranger station',
   hospital:     'Address and phone number of closest hospital',
   planningDoc:  'Planning Doc',
+  lat:          'Latitude',
+  lng:          'Longitude',
 };
 
 /* ── TABLE COLUMN DEFINITIONS ── */
@@ -66,7 +66,6 @@ let markers         = {};      // tripId → Leaflet marker
 let selectedTripId  = null;
 let currentView     = 'map';   // 'map' | 'table'
 let searchQuery     = '';
-let filterLevel     = 'all';
 let columnFilters   = []; // [{key, label, value}] — AND logic
 let sortColumnKey   = 'depart';
 let sortDir         = 'desc';
@@ -104,7 +103,7 @@ function initMap() {
 }
 
 function makeIcon(trip, selected = false) {
-  const color = selected ? '#ef4444' : '#4361ee';
+  const color = selected ? '#ef4444' : '#3a9e5f';
   const size  = selected ? 22 : 18;
   return L.divIcon({
     className: '',
@@ -228,6 +227,7 @@ function tripPanelHTML(trip) {
       ${(isAdmin && trip[COL.planningDoc]) ? `<a class="planning-doc-btn" href="${escAttr(trip[COL.planningDoc])}" target="_blank" rel="noopener">
         📋 Planning Doc
       </a>` : ''}
+      ${isAdmin ? `<div class="admin-row-tag">Sheet row #${trip._row}</div>` : ''}
     </div>
   `;
 }
@@ -426,13 +426,6 @@ function applyFilters() {
     );
   }
 
-  // Skill level filter
-  if (filterLevel !== 'all') {
-    trips = trips.filter(t =>
-      (t[COL.skillLevel] || '').toLowerCase().includes(filterLevel)
-    );
-  }
-
   // Column-specific filters (AND logic — every active filter must match)
   columnFilters.forEach(f => {
     const q = f.value.toLowerCase();
@@ -501,18 +494,14 @@ async function loadData(isRefresh = false) {
     const csv = await fetchCSV();
     const parsed = parseCSV(csv);
 
-    // Show data immediately (no coordinates yet)
     allTrips = parsed;
+    geocodeProgressively(parsed); // read lat/lng from sheet before first render
     applyFilters();
     lastUpdated = new Date();
     updateLastUpdated();
     hideError();
 
-    // Hide loading screen as soon as the table/map shell is ready
     if (!isRefresh) showLoading(false);
-
-    // Geocode in the background — markers appear as coordinates come in
-    geocodeProgressively(parsed, isRefresh);
 
   } catch (err) {
     console.error('Failed to load trip data:', err);
@@ -521,38 +510,23 @@ async function loadData(isRefresh = false) {
   }
 }
 
-async function geocodeProgressively(trips, isRefresh) {
-  const cache = getGeoCache();
-  const toGeocode = [];
-
+function geocodeProgressively(trips) {
   trips.forEach(trip => {
-    if (!rangerStationAddress(trip)) return; // skip trips with no address
-    if (cache[trip._id]) {
-      trip._lat = cache[trip._id].lat;
-      trip._lng = cache[trip._id].lng;
-    } else {
-      toGeocode.push(trip);
+    const coords = parseCoordinates(trip);
+    if (coords) {
+      trip._lat = coords.lat;
+      trip._lng = coords.lng;
     }
   });
+}
 
-  // Render whatever we already have from cache immediately
-  if (currentView === 'map') renderMarkers(filteredTrips);
-
-  for (let i = 0; i < toGeocode.length; i++) {
-    if (i > 0) await sleep(GEO_DELAY_MS);
-    const trip = toGeocode[i];
-    const result = await geocodeTrip(trip);
-    if (result) {
-      trip._lat = result.lat;
-      trip._lng = result.lng;
-      cache[trip._id] = result;
-      if (filteredTrips.includes(trip) && currentView === 'map') {
-        addSingleMarker(trip);
-      }
-    }
-  }
-
-  if (toGeocode.length > 0) saveGeoCache(cache);
+/* Read Latitude/Longitude columns from the sheet.
+   Returns { lat, lng } or null if either value is missing or invalid. */
+function parseCoordinates(trip) {
+  const lat = parseFloat(trip[COL.lat]);
+  const lng = parseFloat(trip[COL.lng]);
+  if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat, lng };
 }
 
 async function fetchCSV() {
@@ -565,89 +539,26 @@ function parseCSV(csvText) {
   // The sheet has a "Table 1" title row before the real header row — drop it
   const lines = csvText.split('\n');
   const firstCell = lines[0].split(',')[0].trim().replace(/^"|"$/g, '');
-  const cleaned = (firstCell.toLowerCase() === 'table 1' || firstCell === '')
-    ? lines.slice(1).join('\n')
-    : csvText;
+  const hasExtraRow = (firstCell.toLowerCase() === 'table 1' || firstCell === '');
+  const cleaned = hasExtraRow ? lines.slice(1).join('\n') : csvText;
+  // Row offset: +1 for 1-indexing, +1 for header row, +1 if "Table 1" title row exists
+  const rowOffset = hasExtraRow ? 3 : 2;
 
   const result = Papa.parse(cleaned, {
     header: true,
     skipEmptyLines: true,
     transformHeader: h => h.trim(),
   });
-  return result.data.map((row) => {
+  return result.data.map((row, index) => {
     const raw = (row[COL.timestamp] || '') + '|' + (row[COL.trip] || '');
     row._id  = hashStr(raw);
+    row._row = index + rowOffset; // spreadsheet row number for admin debugging
     row._lat = null;
     row._lng = null;
     return row;
   });
 }
 
-/* ── Geocoding ── */
-
-function getGeoCache() {
-  try {
-    return JSON.parse(localStorage.getItem(GEO_CACHE_KEY) || '{}');
-  } catch { return {}; }
-}
-
-function saveGeoCache(cache) {
-  try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
-}
-
-function addSingleMarker(trip) {
-  if (!trip._lat || !trip._lng) return;
-  if (markers[trip._id]) return; // already exists
-  const marker = L.marker([trip._lat, trip._lng], { icon: makeIcon(trip) });
-  marker.bindPopup(miniPopupHTML(trip), { maxWidth: 240 });
-  marker.on('click', (e) => {
-    L.DomEvent.stopPropagation(e);
-    selectTrip(trip);
-  });
-  marker.addTo(map);
-  markers[trip._id] = marker;
-}
-
-function rangerStationAddress(trip) {
-  const raw = (trip[COL.rangerStation] || '').trim();
-  if (!raw) return null;
-
-  let s = raw;
-  // Remove phone numbers anywhere in the string: (xxx) xxx-xxxx or xxx-xxx-xxxx or xxx.xxx.xxxx
-  s = s.replace(/\(?\d{3}\)?[\s.\-]\d{3}[\s.\-]\d{4}/g, '');
-  // Remove labels like "Phone number:", "Phone:", "Ph:"
-  s = s.replace(/phone\s*(number)?\s*:?/gi, '');
-  // Remove standalone punctuation debris left over
-  s = s.replace(/^[\s,.\-–]+|[\s,.\-–]+$/g, '').trim();
-  // Collapse multiple spaces/commas
-  s = s.replace(/\s{2,}/g, ' ').replace(/,\s*,/g, ',').trim();
-
-  return s || null;
-}
-
-async function geocodeTrip(trip) {
-  const addr = rangerStationAddress(trip);
-  if (!addr) return null;
-  try {
-    return await nominatimLookup(addr);
-  } catch {
-    return null;
-  }
-}
-
-async function nominatimLookup(query) {
-  // Constrain to western US (CA, NV, OR, AZ, UT, WA) to prevent mis-geocoding
-  // viewbox format: west,south,east,north
-  const viewbox = '-124.5,32.5,-109.0,49.0';
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&viewbox=${viewbox}&bounded=1&q=${encodeURIComponent(query)}`;
-  const res = await fetch(url, {
-    headers: { 'Accept-Language': 'en', 'User-Agent': 'ITW-Trip-Tool/1.0' }
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  if (!data.length) return null;
-  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-}
 
 /* ════════════════════════════════════════
    VIEW SWITCHING
@@ -696,16 +607,6 @@ function bindUI() {
     searchClear.classList.add('hidden');
     applyFilters();
     searchInput.focus();
-  });
-
-  // Filter chips
-  document.querySelectorAll('.chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-      chip.classList.add('active');
-      filterLevel = chip.dataset.level;
-      applyFilters();
-    });
   });
 
   // Column chooser toggle
@@ -931,10 +832,6 @@ function escHtml(str) {
 
 function escAttr(str) {
   return (str || '').replace(/"/g, '&quot;');
-}
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /* Simple non-cryptographic string hash for stable IDs */
