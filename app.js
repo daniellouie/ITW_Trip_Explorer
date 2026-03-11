@@ -103,7 +103,7 @@ function initMap() {
 }
 
 function makeIcon(trip, selected = false) {
-  const color = selected ? '#ef4444' : '#3a9e5f';
+  const color = selected ? '#ef4444' : '#4361ee';
   const size  = selected ? 22 : 18;
   return L.divIcon({
     className: '',
@@ -168,12 +168,14 @@ function openTripPanel(trip) {
   // Force reflow so transition fires
   panel.offsetHeight;
   panel.classList.add('open');
+  document.getElementById('app-main').classList.add('panel-open');
   document.getElementById('trip-panel-content').innerHTML = tripPanelHTML(trip);
 }
 
 function closeTripPanel() {
   const panel = document.getElementById('trip-panel');
   panel.classList.remove('open');
+  document.getElementById('app-main').classList.remove('panel-open');
   panel.addEventListener('transitionend', () => {
     if (!panel.classList.contains('open')) panel.classList.add('hidden');
   }, { once: true });
@@ -224,6 +226,7 @@ function tripPanelHTML(trip) {
       ${travelUrl ? `<a class="panel-map-btn" href="${travelUrl}" target="_blank" rel="noopener">
         🗺️ Open in Google Maps
       </a>` : ''}
+      ${(currentView === 'table' && trip._lat && trip._lng) ? `<button class="show-on-map-btn">📍 Show on Map</button>` : ''}
       ${(isAdmin && trip[COL.planningDoc]) ? `<a class="planning-doc-btn" href="${escAttr(trip[COL.planningDoc])}" target="_blank" rel="noopener">
         📋 Planning Doc
       </a>` : ''}
@@ -329,10 +332,9 @@ function openTableDetailPanel(trip) {
   document.getElementById('table-panel-content').innerHTML = tripPanelHTML(trip);
   panel.classList.remove('hidden');
 
-  // Also add a "View on Map" button behaviour via event delegation
-  panel.querySelector('.panel-map-btn')?.addEventListener('click', () => {
+  panel.querySelector('.show-on-map-btn')?.addEventListener('click', () => {
     switchView('map');
-    if (trip._lat && trip._lng) selectTrip(trip);
+    setTimeout(() => selectTrip(trip), 100);
   });
 }
 
@@ -567,6 +569,7 @@ function parseCSV(csvText) {
 function switchView(view) {
   currentView = view;
 
+  document.getElementById('app-main').classList.toggle('is-map-view', view === 'map');
   document.getElementById('map-view').classList.toggle('hidden',   view !== 'map');
   document.getElementById('table-view').classList.toggle('hidden', view !== 'table');
   document.getElementById('btn-map-view').classList.toggle('active',   view === 'map');
@@ -585,7 +588,19 @@ function switchView(view) {
    UI BINDINGS
    ════════════════════════════════════════ */
 
+function syncHeaderHeight() {
+  const h = document.getElementById('app-header').getBoundingClientRect().height;
+  document.documentElement.style.setProperty('--header-h', Math.ceil(h) + 'px');
+}
+
 function bindUI() {
+  // Keep --header-h matched to actual rendered header height (handles mobile wrapping)
+  syncHeaderHeight();
+  window.addEventListener('resize', syncHeaderHeight);
+
+  // Set initial view class
+  document.getElementById('app-main').classList.add('is-map-view');
+
   // View toggle
   document.getElementById('btn-map-view').addEventListener('click', () => switchView('map'));
   document.getElementById('btn-table-view').addEventListener('click', () => switchView('table'));

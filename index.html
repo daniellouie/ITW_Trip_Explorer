@@ -8,7 +8,7 @@
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <!-- Custom styles -->
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=8" />
 </head>
 <body>
 
@@ -67,6 +67,42 @@
   <!-- MAIN CONTENT -->
   <main id="app-main">
 
+    <!-- ─── SHARED FILTER BAR ─── -->
+    <div class="filter-bar">
+      <!-- Active column filter pills -->
+      <div id="column-filter-pills" class="column-filter-pills hidden" aria-label="Active filters"></div>
+
+      <div class="filter-bar-right">
+        <!-- Add Filter -->
+        <div class="col-filter" id="col-filter">
+          <button id="col-filter-btn" class="col-chooser-btn" aria-haspopup="true" aria-expanded="false">
+            <svg viewBox="0 0 16 16" fill="currentColor" width="13" height="13"><path d="M8 2a1 1 0 0 1 1 1v4h4a1 1 0 0 1 0 2h-4v4a1 1 0 0 1-2 0V9H3a1 1 0 0 1 0-2h4V3a1 1 0 0 1 1-1z"/></svg>
+            Filter
+          </button>
+          <div id="col-filter-dropdown" class="col-filter-dropdown hidden" role="dialog" aria-label="Add column filter">
+            <div class="col-filter-form">
+              <select id="col-filter-select" aria-label="Column to filter">
+                <option value="">Select column…</option>
+              </select>
+              <input type="text" id="col-filter-input" placeholder="Enter filter value…" autocomplete="off" />
+              <button id="col-filter-add-btn">Add Filter</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column chooser (hidden on map view) -->
+        <div class="col-chooser" id="col-chooser">
+          <button id="col-chooser-btn" class="col-chooser-btn" aria-haspopup="true" aria-expanded="false">
+            <svg viewBox="0 0 16 16" fill="currentColor" width="13" height="13"><path d="M1 3h14v1.5H1V3zm2 4h10v1.5H3V7zm2 4h6v1.5H5V11z"/></svg>
+            Columns
+          </button>
+          <div id="col-chooser-dropdown" class="col-chooser-dropdown hidden" role="menu">
+            <!-- populated by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ─── MAP VIEW ─── -->
     <div id="map-view" class="view-panel active">
       <div id="map"></div>
@@ -80,41 +116,6 @@
 
     <!-- ─── TABLE VIEW ─── -->
     <div id="table-view" class="view-panel hidden">
-
-      <div class="filter-bar">
-        <!-- Active column filter pills -->
-        <div id="column-filter-pills" class="column-filter-pills hidden" aria-label="Active filters"></div>
-
-        <div class="filter-bar-right">
-          <!-- Add Filter -->
-          <div class="col-filter" id="col-filter">
-            <button id="col-filter-btn" class="col-chooser-btn" aria-haspopup="true" aria-expanded="false">
-              <svg viewBox="0 0 16 16" fill="currentColor" width="13" height="13"><path d="M8 2a1 1 0 0 1 1 1v4h4a1 1 0 0 1 0 2h-4v4a1 1 0 0 1-2 0V9H3a1 1 0 0 1 0-2h4V3a1 1 0 0 1 1-1z"/></svg>
-              Filter
-            </button>
-            <div id="col-filter-dropdown" class="col-filter-dropdown hidden" role="dialog" aria-label="Add column filter">
-              <div class="col-filter-form">
-                <select id="col-filter-select" aria-label="Column to filter">
-                  <option value="">Select column…</option>
-                </select>
-                <input type="text" id="col-filter-input" placeholder="Enter filter value…" autocomplete="off" />
-                <button id="col-filter-add-btn">Add Filter</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Column chooser -->
-          <div class="col-chooser" id="col-chooser">
-            <button id="col-chooser-btn" class="col-chooser-btn" aria-haspopup="true" aria-expanded="false">
-              <svg viewBox="0 0 16 16" fill="currentColor" width="13" height="13"><path d="M1 3h14v1.5H1V3zm2 4h10v1.5H3V7zm2 4h6v1.5H5V11z"/></svg>
-              Columns
-            </button>
-            <div id="col-chooser-dropdown" class="col-chooser-dropdown hidden" role="menu">
-              <!-- populated by JS -->
-            </div>
-          </div>
-        </div>
-      </div>
 
       <!-- Split: table left, detail panel right -->
       <div id="table-split" class="table-split">
@@ -163,6 +164,6 @@
   <!-- SCRIPTS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

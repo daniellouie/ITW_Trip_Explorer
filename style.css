@@ -25,7 +25,7 @@
   --unknown:      #9ca3af;
 
   /* Pin colors */
-  --pin-default:  #3a9e5f;
+  --pin-default:  #4361ee;
   --pin-selected: #ef4444;
 
   /* Layout */
@@ -146,11 +146,39 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
   top: var(--header-h);
   bottom: var(--footer-h);
   left: 0; right: 0;
+  display: flex; flex-direction: column;
   overflow: hidden;
 }
 
-.view-panel { width: 100%; height: 100%; }
+.view-panel { width: 100%; flex: 1; min-height: 0; }
 .view-panel.hidden { display: none; }
+
+/* Hide Columns chooser on map view */
+#app-main.is-map-view .col-chooser { display: none; }
+
+/* On map view: filter bar floats as a compact overlay, no background strip */
+#app-main.is-map-view .filter-bar {
+  position: absolute;
+  top: 8px; right: 8px;
+  left: auto; width: auto;
+  background: transparent;
+  border-bottom: none;
+  padding: 0;
+  z-index: 600;
+  transition: right 0.3s ease;
+}
+
+/* Shift filter bar left when map trip panel is open (desktop only) */
+#app-main.is-map-view.panel-open .filter-bar {
+  right: calc(var(--panel-w) + 8px);
+}
+
+@media (max-width: 640px) {
+  /* Panel slides up on mobile — no horizontal shift needed */
+  #app-main.is-map-view.panel-open .filter-bar {
+    right: 8px;
+  }
+}
 
 /* ── Footer ── */
 #app-footer {
@@ -166,7 +194,7 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
    MAP VIEW
    ════════════════════════════════════════ */
 
-#map-view { position: relative; }
+#map-view { position: relative; overflow: hidden; }
 
 #map {
   width: 100%; height: 100%;
@@ -296,6 +324,7 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap; flex-shrink: 0;
+  position: relative; z-index: 600;
 }
 
 .filter-bar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
@@ -514,6 +543,17 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
   background: rgba(34, 197, 94, 0.4);
   color: white;
 }
+
+/* ── Show on Map button (in table detail panel) ── */
+.show-on-map-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; margin-top: 8px;
+  background: var(--accent); color: white;
+  border: none; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 12px; font-weight: 600;
+  transition: background 0.15s;
+}
+.show-on-map-btn:hover { background: var(--accent-hover); }
 
 /* ── Planning Doc button (in trip panel) ── */
 .planning-doc-btn {
