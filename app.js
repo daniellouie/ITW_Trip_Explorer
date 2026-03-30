@@ -3,58 +3,47 @@
    ════════════════════════════════════════ */
 
 /* ── CONFIG ── */
-const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRqhaP4vPUwoFzvmx6-vxPbgOxWqXpwKodb4TQsN52q4Ih2Ca_G9Pp9Cetua_OOyvBf_azibL_IlfE0/pub?gid=64204779&single=true&output=csv';
+const CSV_URL_RESPONSES  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRQ_2s6UizLvwpEQAYnFldooRq8AqZMEDrSOzUh2XaYiBws8l8DSVejopphTHi5U92gwvvrdICyKtSv/pub?gid=1184587338&single=true&output=csv';
+const CSV_URL_HISTORICAL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRQ_2s6UizLvwpEQAYnFldooRq8AqZMEDrSOzUh2XaYiBws8l8DSVejopphTHi5U92gwvvrdICyKtSv/pub?gid=1668050106&single=true&output=csv';
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const ADMIN_PASSWORD   = 'itwadmin'; // Change before deploying
 
 /* Column name mappings — update here if the sheet changes */
 const COL = {
   timestamp:    'Timestamp',
-  trip:         'Trip',
-  location:     'Location',
-  zipcode:      'Zipcode',
+  trip:         'Trip Name',
   leaders:      'Leaders',
-  depart:       'Depart',
-  returnDate:   'Return',
-  travelLoc:    'Travel location',
-  mileage:      'Mileage',
-  gasCost:      'Total Gas Cost',
+  depart:       'When do you leave?',
+  returnDate:   'When do you return?',
+  travelLoc:    'Activity Address',
+  gasCost:      'Gas Cost',
   itinerary:    'Basic Trip Itinerary',
-  skillLevel:   'Trip Skill Level',
-  sunrise:      'Sunrise/Sunset',
-  weather:      'Weather Update',
-  participants: 'Number of Participants Total',
-  gearList:     'Individual Gear List for Participants',
-  blurb:        'School-wide Email Blurb',
-  rangerStation:'Address and phone number of closest ranger station',
-  hospital:     'Address and phone number of closest hospital',
-  planningDoc:  'Planning Doc',
+  skillLevel:   'Difficulty',
+  participants: 'Participants',
+  blurb:        'Blurb for Schoolwide email',
+  planningDoc:  'Link to your planning doc',
   lat:          'Latitude',
   lng:          'Longitude',
+  tidbits:      'Trip Tidbits',
+  cancelled:    'Was trip cancelled? If so, why?',
 };
 
 /* ── TABLE COLUMN DEFINITIONS ── */
 const TABLE_COLUMNS = [
-  { key: 'trip',         label: 'Trip',            isDate: false, default: true  },
-  { key: 'location',     label: 'Location',        isDate: false, default: true  },
-  { key: 'skillLevel',   label: 'Skill Level',     isDate: false, default: true  },
-  { key: 'depart',       label: 'Depart',          isDate: true,  default: true  },
-  { key: 'returnDate',   label: 'Return',          isDate: true,  default: false },
-  { key: 'leaders',      label: 'Leaders',         isDate: false, default: true  },
-  { key: 'participants', label: 'Participants',     isDate: false, default: false },
-  { key: 'mileage',      label: 'Mileage',         isDate: false, default: false },
-  { key: 'gasCost',      label: 'Gas Cost',        isDate: false, default: false },
-  { key: 'timestamp',    label: 'Submitted',       isDate: true,  default: false },
-  { key: 'zipcode',      label: 'Zipcode',         isDate: false, default: false },
-  { key: 'travelLoc',    label: 'Travel Location', isDate: false, default: false },
-  { key: 'itinerary',    label: 'Itinerary',       isDate: false, default: false },
-  { key: 'sunrise',      label: 'Sunrise/Sunset',  isDate: false, default: false },
-  { key: 'weather',      label: 'Weather',         isDate: false, default: false },
-  { key: 'gearList',     label: 'Gear List',       isDate: false, default: false },
-  { key: 'blurb',        label: 'Email Blurb',     isDate: false, default: false },
-  { key: 'rangerStation',label: 'Ranger Station',  isDate: false, default: false },
-  { key: 'hospital',     label: 'Hospital',        isDate: false, default: false },
-  { key: 'planningDoc',  label: 'Planning Doc',    isDate: false, default: false, adminOnly: true },
+  { key: 'trip',         label: 'Trip',         isDate: false, default: true  },
+  { key: 'travelLoc',    label: 'Location',     isDate: false, default: true  },
+  { key: 'skillLevel',   label: 'Difficulty',   isDate: false, default: true  },
+  { key: 'depart',       label: 'Depart',       isDate: true,  default: true  },
+  { key: 'returnDate',   label: 'Return',       isDate: true,  default: false },
+  { key: 'leaders',      label: 'Leaders',      isDate: false, default: true  },
+  { key: 'participants', label: 'Participants', isDate: false, default: false },
+  { key: 'gasCost',      label: 'Gas Cost',     isDate: false, default: false },
+  { key: 'timestamp',    label: 'Submitted',    isDate: true,  default: false },
+  { key: 'itinerary',    label: 'Itinerary',    isDate: false, default: false },
+  { key: 'blurb',        label: 'Email Blurb',  isDate: false, default: false },
+  { key: 'tidbits',      label: 'Trip Tidbits', isDate: false, default: false },
+  { key: 'cancelled',    label: 'Cancellation', isDate: false, default: false, adminOnly: true },
+  { key: 'planningDoc',  label: 'Planning Doc', isDate: false, default: false, adminOnly: true },
 ];
 
 /* ── STATE ── */
@@ -206,7 +195,7 @@ function tripPanelHTML(trip) {
   return `
     <div class="panel-hero">
       <div class="panel-title">${escHtml(trip[COL.trip] || 'Unnamed Trip')}</div>
-      <div class="panel-location">📍 ${escHtml(trip[COL.location] || '')}</div>
+      <div class="panel-location">📍 ${escHtml(trip[COL.travelLoc] || '')}</div>
     </div>
     <div class="panel-body">
       <div class="panel-stats">
@@ -214,14 +203,12 @@ function tripPanelHTML(trip) {
         ${statCard('Skill Level',  escHtml(trip[COL.skillLevel] || '—'))}
         ${statCard('Leaders',      escHtml(trip[COL.leaders] || '—'))}
         ${statCard('Participants', trip[COL.participants] || '—')}
-        ${trip[COL.mileage]  ? statCard('Mileage',      trip[COL.mileage]) : ''}
         ${trip[COL.gasCost]  ? statCard('Gas Cost',     trip[COL.gasCost]) : ''}
       </div>
 
       ${sectionHTML('Itinerary', trip[COL.itinerary] || trip[COL.blurb] || '')}
-      ${sectionHTML('Gear List', trip[COL.gearList]  || '')}
-      ${sectionHTML('Weather',   trip[COL.weather]   || '')}
-      ${sectionHTML('Sunrise/Sunset', trip[COL.sunrise] || '')}
+      ${sectionHTML('Trip Tidbits', trip[COL.tidbits] || '')}
+      ${isAdmin && trip[COL.cancelled] ? sectionHTML('Cancellation Notes', trip[COL.cancelled]) : ''}
 
       ${travelUrl ? `<a class="panel-map-btn" href="${travelUrl}" target="_blank" rel="noopener">
         🗺️ Open in Google Maps
@@ -421,7 +408,7 @@ function applyFilters() {
     const q = searchQuery.toLowerCase();
     trips = trips.filter(t =>
       (t[COL.trip]      || '').toLowerCase().includes(q) ||
-      (t[COL.location]  || '').toLowerCase().includes(q) ||
+      (t[COL.travelLoc] || '').toLowerCase().includes(q) ||
       (t[COL.leaders]   || '').toLowerCase().includes(q) ||
       (t[COL.itinerary] || '').toLowerCase().includes(q) ||
       (t[COL.blurb]     || '').toLowerCase().includes(q)
@@ -493,11 +480,16 @@ async function loadData(isRefresh = false) {
   if (!isRefresh) showLoading(true);
 
   try {
-    const csv = await fetchCSV();
-    const parsed = parseCSV(csv);
+    const [csvResponses, csvHistorical] = await Promise.all([
+      fetchCSV(CSV_URL_RESPONSES),
+      fetchCSV(CSV_URL_HISTORICAL),
+    ]);
 
-    allTrips = parsed;
-    geocodeProgressively(parsed); // read lat/lng from sheet before first render
+    const responses  = parseCSV(csvResponses);
+    const historical = parseCSV(csvHistorical);
+    allTrips = [...responses, ...historical];
+
+    geocodeProgressively(allTrips);
     applyFilters();
     lastUpdated = new Date();
     updateLastUpdated();
@@ -531,8 +523,8 @@ function parseCoordinates(trip) {
   return { lat, lng };
 }
 
-async function fetchCSV() {
-  const res = await fetch(CSV_URL);
+async function fetchCSV(url) {
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
 }
